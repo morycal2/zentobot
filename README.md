@@ -1,72 +1,62 @@
-# Zento Bot v1
+# ZENTO AI Bot — Railway + Bale/Zento
 
-نسخه اول ربات زنتو با Python، Webhook و SQLite.
+این نسخه، آپلودر قبلی را نگه می‌دارد و بخش ZENTO AI را اضافه می‌کند.
 
-## امکانات
+## معماری
 
-- /start
-- /help
-- /profile
-- /points
-- /stats برای مدیر
-- ذخیره کاربران در SQLite
-- ثبت امتیاز
-- پاسخ به پیام‌های معمولی
-- endpoint سلامت: /health
+- 🎙️ ویس → Groq Whisper → متن
+- 💬 متن → OpenRouter → پاسخ AI
+- 🖼️ توضیح متن → Hugging Face Inference → تصویر
+- همه بخش‌ها با دکمه‌های شیشه‌ای (Inline Keyboard) انتخاب می‌شوند.
 
-## راه‌اندازی
+## متغیرهای Railway
 
-1. Python 3.10+ نصب کن.
-2. وابستگی‌ها را نصب کن:
+حداقل این‌ها را تنظیم کن:
 
-```bash
-pip install -r requirements.txt
-```
+`BOT_TOKEN`
+`ZENTO_API_BASE`
+`ADMIN_ID`
+`GROQ_API_KEY`
+`OPENROUTER_API_KEY`
+`HF_TOKEN`
 
-3. متغیرهای محیطی را تنظیم کن:
+برای تنظیم مدل‌ها:
 
-```text
-BOT_TOKEN=توکن_ربات
-ZENTO_API_BASE=https://zento.up.railway.app/api/bot
-ADMIN_ID=شناسه_خودت
-```
+`GROQ_STT_MODEL=whisper-large-v3-turbo`
+`OPENROUTER_MODEL=openai/gpt-5.4-mini`
+`HF_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell`
 
-4. اجرا:
+برای دانلود فایل صوتی:
 
-```bash
-python app.py
-```
+`BALE_FILE_BASE_URL=https://tapi.bale.ai/file`
 
-برای سرویس‌های ابری، دستور اجرا:
+اگر پروکسی Zento آدرس فایل را به شکل دیگری برمی‌گرداند، `BALE_FILE_BASE_URL` را مطابق API خودت تغییر بده.
 
-```bash
-gunicorn --bind 0.0.0.0:$PORT app:app
-```
+## Railway
 
-## اتصال Webhook
+1. فایل‌های این ZIP را روی GitHub/Repository خودت قرار بده.
+2. Railway را به Repository وصل کن.
+3. Environment Variables را وارد کن.
+4. Deploy کن.
+5. آدرس `/health` را باز کن؛ باید `zento_ai: true` ببینی.
+6. Webhook را مطابق روش فعلی Zento/Bale روی `/webhook` نگه دار.
 
-بعد از Deploy شدن برنامه، آدرس عمومی HTTPS را در Zento BotFather وارد کن:
+## استفاده در ربات
 
-```text
-https://YOUR-DOMAIN.example/webhook
-```
+از `/start` وارد منوی اصلی شو و روی `🤖 ZENTO AI` بزن.
 
-## نکته مهم درباره API زنتو
+- `🎙️ ویس → متن`: ویس بفرست.
+- `💬 متن → AI`: متن بفرست و پاسخ OpenRouter را دریافت کن.
+- `🖼️ متن → عکس`: توضیح تصویر را بفرست تا تصویر تولید شود.
 
-از تصویر ارسالی شما فقط الگوی زیر را با اطمینان داریم:
+## نکته مهم برای عکس
 
-```text
-/api/bot/<TOKEN>/getMe
-```
+ارسال تصویر تولیدشده از Hugging Face از طریق `sendPhoto` به صورت multipart انجام می‌شود. اگر endpoint پروکسی Zento شما آپلود multipart را قبول نکند، باید endpoint آپلود تصویر پروکسی را با API واقعی Zento هماهنگ کنی.
 
-بنابراین کد `sendMessage` را بر اساس همین الگو نوشته‌ایم:
+## APIهای استفاده‌شده
 
-```text
-/api/bot/<TOKEN>/sendMessage
-```
+Groq برای transcription از endpoint سازگار با OpenAI استفاده می‌شود.
+OpenRouter برای Chat Completions استفاده می‌شود.
+Hugging Face Inference برای text-to-image استفاده می‌شود.
 
-اگر Zento در مستندات خودش نام/فرمت دیگری برای ارسال پیام اعلام کند، فقط تابع `send_message` در `app.py` باید اصلاح شود.
-
-## امنیت
-
-توکن را داخل `app.py` ننویس و برای کسی ارسال نکن. آن را فقط به‌عنوان Environment Variable در سرویس میزبانی قرار بده.
+کلیدهای API را داخل کد یا GitHub قرار نده؛ فقط در Railway Variables بگذار.
