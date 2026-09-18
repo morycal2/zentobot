@@ -11,17 +11,17 @@ ADMIN_ID = os.getenv('ADMIN_ID','').strip()
 DB_PATH = os.getenv('DB_PATH','bot.db')
 BAD_WORDS = [x.strip().lower() for x in os.getenv('BAD_WORDS','چرت').split('|') if x.strip()]
 
-# ---------- ZENTO AI providers ----------
+# ---------- Zyro providers ----------
 GROQ_API_KEY = os.getenv('GROQ_API_KEY','').strip()
 GROQ_STT_MODEL = os.getenv('GROQ_STT_MODEL','whisper-large-v3-turbo').strip()
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY','').strip()
-OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL','openai/gpt-5.4-mini').strip()
+OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL','openai/gpt-oss-20b:free').strip()
 OPENROUTER_SITE_URL = os.getenv('OPENROUTER_SITE_URL','').strip()
-OPENROUTER_APP_NAME = os.getenv('OPENROUTER_APP_NAME','ZENTO AI').strip()
+OPENROUTER_APP_NAME = os.getenv('OPENROUTER_APP_NAME','Zyro').strip()
 HF_TOKEN = os.getenv('HF_TOKEN','').strip()
 HF_IMAGE_MODEL = os.getenv('HF_IMAGE_MODEL','black-forest-labs/FLUX.1-schnell').strip()
 BALE_FILE_BASE_URL = os.getenv('BALE_FILE_BASE_URL','https://tapi.bale.ai/file').rstrip('/')
-AI_SYSTEM_PROMPT = os.getenv('AI_SYSTEM_PROMPT','You are ZENTO AI, a helpful assistant. Reply clearly and concisely.').strip()
+AI_SYSTEM_PROMPT = os.getenv('AI_SYSTEM_PROMPT','You are Zyro, a helpful assistant. Reply clearly and concisely.').strip()
 AI_TIMEOUT = int(os.getenv('AI_TIMEOUT','90') or 90)
 
 
@@ -55,19 +55,15 @@ def get_ai_mode(uid):
 
 def ai_menu():
     return menu([
-        [btn('🎙️ ویس → متن','ai:voice'), btn('💬 متن → AI','ai:text')],
-        [btn('🖼️ متن → عکس','ai:image')],
-        [btn('🏠 منوی اصلی','menu')]
+        [btn('🎙️ ویس', 'ai:voice'), btn('💬 چت', 'ai:text')],
+        [btn('🖼️ ساخت تصویر', 'ai:image')],
     ])
 
 def ai_home(cid):
     send_message(cid,
-        '🤖 ZENTO AI\n\n'
-        'یک بخش را انتخاب کن:\n'
-        '🎙️ ویس: تبدیل ویس به متن با Groq\n'
-        '💬 متن: پاسخ هوش مصنوعی با OpenRouter\n'
-        '🖼️ عکس: ساخت تصویر با Hugging Face\n\n'
-        'همه گزینه‌ها با دکمه شیشه‌ای در دسترس هستند 👇',
+        '✨ Zyro\n\n'
+        'سریع، ساده و قدرتمند.\n'
+        'یکی از گزینه‌های زیر را انتخاب کن 👇',
         ai_menu())
 
 def _extract_json_error(r):
@@ -81,26 +77,26 @@ def _extract_json_error(r):
 
 def openrouter_chat(prompt, uid=None):
     if not OPENROUTER_API_KEY:
-        return None, 'OPENROUTER_API_KEY در Railway تنظیم نشده است.'
+        return None, 'OPENROUTER_API_KEY در تنظیمات Railway تنظیم نشده است.'
     headers={'Authorization':f'Bearer {OPENROUTER_API_KEY}','Content-Type':'application/json'}
     if OPENROUTER_SITE_URL: headers['HTTP-Referer']=OPENROUTER_SITE_URL
-    if OPENROUTER_APP_NAME: headers['X-OpenRouter-Title']=OPENROUTER_APP_NAME
+    if OPENROUTER_APP_NAME: headers['X-Zyro-Title']=OPENROUTER_APP_NAME
     payload={
         'model':OPENROUTER_MODEL,
         'messages':[{'role':'system','content':AI_SYSTEM_PROMPT},{'role':'user','content':prompt}],
-        'temperature':0.7,
-        'max_completion_tokens':1200,
+        'temperature':0.4,
+        'max_completion_tokens':700,
         'user':str(uid) if uid is not None else None
     }
     try:
         r=requests.post('https://openrouter.ai/api/v1/chat/completions',headers=headers,json=payload,timeout=AI_TIMEOUT)
-        if not r.ok:return None, f'خطای OpenRouter: {_extract_json_error(r)}'
+        if not r.ok:return None, f'خطا: {_extract_json_error(r)}'
         data=r.json()
         content=((data.get('choices') or [{}])[0].get('message') or {}).get('content')
-        if not content:return None,'OpenRouter پاسخ متنی برنگرداند.'
+        if not content:return None,'Zyro پاسخ متنی برنگرداند.'
         return str(content).strip(),None
     except requests.RequestException as e:
-        return None,f'اتصال به OpenRouter ناموفق بود: {e}'
+        return None,f'اتصال ناموفق بود: {e}'
 
 def download_bale_file(file_id):
     if not file_id or not BOT_TOKEN:return None,None
@@ -121,7 +117,7 @@ def download_bale_file(file_id):
         return None,f'خطای دانلود فایل: {e}'
 
 def groq_transcribe(file_id):
-    if not GROQ_API_KEY:return None,'GROQ_API_KEY در Railway تنظیم نشده است.'
+    if not GROQ_API_KEY:return None,'GROQ_API_KEY در تنظیمات Railway تنظیم نشده است.'
     raw,err=download_bale_file(file_id)
     if err:return None,err
     try:
@@ -130,23 +126,25 @@ def groq_transcribe(file_id):
         r=requests.post('https://api.groq.com/openai/v1/audio/transcriptions',
                         headers={'Authorization':f'Bearer {GROQ_API_KEY}'},
                         files=files,data=data,timeout=AI_TIMEOUT)
-        if not r.ok:return None,f'خطای Groq: {_extract_json_error(r)}'
+        if not r.ok:return None,f'خطا: {_extract_json_error(r)}'
         text=(r.json().get('text') or '').strip()
-        return (text,None) if text else (None,'Groq متن قابل تشخیصی برنگرداند.')
+        return (text,None) if text else (None,'Zyro متن قابل تشخیصی برنگرداند.')
     except requests.RequestException as e:
-        return None,f'اتصال به Groq ناموفق بود: {e}'
+        return None,f'اتصال ناموفق بود: {e}'
 
 def hf_generate_image(prompt):
-    if not HF_TOKEN:return None,'HF_TOKEN در Railway تنظیم نشده است.'
+    if not HF_TOKEN:return None,'HF_TOKEN در تنظیمات Railway تنظیم نشده است.'
+    # Use Zyro's current router endpoint rather than the retired
+    # hf-inference provider route.
     url='https://router.huggingface.co/hf-inference/models/'+HF_IMAGE_MODEL
+    headers={'Authorization':f'Bearer {HF_TOKEN}'}
     try:
-        r=requests.post(url,headers={'Authorization':f'Bearer {HF_TOKEN}'},
-                        json={'inputs':prompt},timeout=AI_TIMEOUT)
-        if not r.ok:return None,f'خطای Hugging Face: {_extract_json_error(r)}'
-        if not r.content:return None,'Hugging Face تصویر خالی برگرداند.'
+        r=requests.post(url,headers=headers,json={'inputs':prompt},timeout=AI_TIMEOUT)
+        if not r.ok:return None,f'خطا: {_extract_json_error(r)}'
+        if not r.content:return None,'Zyro تصویر خالی برگرداند.'
         return r.content,None
     except requests.RequestException as e:
-        return None,f'اتصال به Hugging Face ناموفق بود: {e}'
+        return None,f'اتصال ناموفق بود: {e}'
 
 def send_photo_bytes(cid, image_bytes, caption=''):
     if not BOT_TOKEN or not image_bytes:return False
@@ -159,12 +157,24 @@ def send_photo_bytes(cid, image_bytes, caption=''):
         return r.ok
     except requests.RequestException:return False
 
+def is_zyro_mention(text, m):
+    if not text:
+        return False
+    t=str(text).strip().lower()
+    names=['@zyro','zyro']
+    return any(n in t for n in names)
+
+def strip_zyro_mention(text):
+    if not text:
+        return ''
+    t=re.sub(r'@?zyro\\b', '', str(text), flags=re.I)
+    return re.sub(r'\\s+', ' ', t).strip(' ,:؛،')
+
 def handle_ai_voice(cid,uid,m):
     voice=(m or {}).get('voice') or (m or {}).get('audio')
     if not isinstance(voice,dict):return False
     file_id=voice.get('file_id') or voice.get('id')
     if not file_id:return False
-    send_message(cid,'⏳ ویس دریافت شد؛ در حال تبدیل به متن با Groq...')
     text,err=groq_transcribe(file_id)
     if err:send_message(cid,'❌ '+err,ai_menu())
     else:send_message(cid,'🎙️ متن استخراج‌شده:\n\n'+text,ai_menu())
@@ -172,18 +182,16 @@ def handle_ai_voice(cid,uid,m):
 
 def handle_ai_text(cid,uid,text):
     if not text:return False
-    send_message(cid,'⏳ در حال فکر کردن با OpenRouter...')
     answer,err=openrouter_chat(text,uid)
     if err:send_message(cid,'❌ '+err,ai_menu())
-    else:send_message(cid,'🤖 ZENTO AI\n\n'+answer,ai_menu())
+    else:send_message(cid,'🤖 Zyro\n\n'+answer,ai_menu())
     return True
 
 def handle_ai_image(cid,uid,prompt):
     if not prompt:return False
-    send_message(cid,'⏳ در حال ساخت تصویر با Hugging Face...')
     image,err=hf_generate_image(prompt)
     if err:send_message(cid,'❌ '+err,ai_menu()); return True
-    if not send_photo_bytes(cid,image,'🖼️ ساخته‌شده با ZENTO AI • Hugging Face'):
+    if not send_photo_bytes(cid,image,'🖼️ ساخته‌شده با Zyro • Zyro'):
         send_message(cid,'❌ تصویر ساخته شد اما ارسال آن به بله ناموفق بود.\n\n'
                      'اگر پروکسی Zento شما آپلود multipart را پشتیبانی نمی‌کند، مقدار ZENTO_API_BASE را بررسی کن.',ai_menu())
     return True
@@ -301,7 +309,7 @@ def answer_callback(callback_id): return bool(callback_id) and api_call('answerC
 def btn(text,data): return {'text':text,'callback_data':data}
 def menu(rows): return {'inline_keyboard':rows}
 
-def main_menu(): return menu([[btn('🤖 ZENTO AI','ai')],[btn('👤 پروفایل','profile'),btn('⭐ امتیازات','points')],[btn('🎁 جایزه روزانه','daily'),btn('💬 پشتیبانی','support')],[btn('📚 راهنما','help'),btn('ℹ️ درباره','about')],[btn('🔄 بروزرسانی','menu')]])
+def main_menu(): return ai_menu()
 def back(): return menu([[btn('🏠 منوی اصلی','menu')]])
 def admin_menu(): return menu([[btn('📊 داشبورد','adm:dashboard'),btn('🛡️ مدیریت','adm:moderation')],[btn('🚫 کلمات ممنوع','adm:words'),btn('👥 گروه‌ها','adm:chats')],[btn('📤 آپلودر','adm:uploader'),btn('📢 ارسال همگانی','adm:broadcast')],[btn('⚙️ تنظیمات','adm:settings'),btn('📋 راهنما','adm:help')],[btn('🏠 خروج','menu')]])
 def moderation_menu(): return menu([[btn('🛡️ روشن/خاموش','adm:togglemod'),btn('🚫 بن خودکار','adm:toggleban')],[btn('⚠️ ریست اخطار','adm:resetwarn')],[btn('🔙 پنل مدیر','admin')]])
@@ -467,6 +475,12 @@ def handle_message(cid,chat_type,uid,username,first_name,text,message_id,title,m
     if uid is not None:upsert_user(uid,username,first_name)
     save_chat(cid,title,chat_type)
     mode=get_ai_mode(uid) if uid is not None else ''
+    # In groups/channels, answering when the bot is called by name.
+    if text and is_zyro_mention(text, m) and not text.startswith('/'):
+        prompt=strip_zyro_mention(text)
+        if prompt:
+            handle_ai_text(cid,uid,prompt)
+        return
     if m is not None and mode=='voice' and handle_ai_voice(cid,uid,m): return
     if mode=='text' and text and not text.startswith('/'):
         handle_ai_text(cid,uid,text); return
@@ -529,17 +543,17 @@ def handle_callback(data):
     elif action=='support':show_support(cid)
     elif action=='about':show_about(cid)
     elif action=='ai':set_ai_mode(uid,'');ai_home(cid)
-    elif action=='ai:voice':set_ai_mode(uid,'voice');send_message(cid,'🎙️ حالت ویس فعال شد.\n\nیک ویس بفرست تا با Groq به متن تبدیلش کنم.',ai_menu())
-    elif action=='ai:text':set_ai_mode(uid,'text');send_message(cid,'💬 حالت متن فعال شد.\n\nپیامت را بفرست تا OpenRouter پاسخ بدهد.',ai_menu())
-    elif action=='ai:image':set_ai_mode(uid,'image');send_message(cid,'🖼️ حالت ساخت عکس فعال شد.\n\nتوضیح تصویر را بفرست؛ Hugging Face آن را می‌سازد.',ai_menu())
+    elif action=='ai:voice':set_ai_mode(uid,'voice');send_message(cid,'🎙️ حالت ویس فعال شد.\n\nیک ویس بفرست تا با Zyro به متن تبدیلش کنم.',ai_menu())
+    elif action=='ai:text':set_ai_mode(uid,'text');send_message(cid,'💬 حالت متن فعال شد.\n\nپیامت را بفرست تا Zyro پاسخ بدهد.',ai_menu())
+    elif action=='ai:image':set_ai_mode(uid,'image');send_message(cid,'🖼️ حالت ساخت عکس فعال شد.\n\nتوضیح تصویر را بفرست؛ Zyro آن را می‌سازد.',ai_menu())
     elif action=='up:help':show_uploader_help(cid)
     elif action.startswith('up:get:'):send_saved_file(cid,action.split(':',2)[2])
 
 @app.get('/')
-def home():return 'Zento AI Bot v8 - Uploader + Groq + OpenRouter + Hugging Face is running.'
+def home():return 'Zyro Bot v8 - Uploader + Zyro + Zyro + Zyro is running.'
 @app.get('/health')
 def health():
-    c=db(); u=c.execute('SELECT COUNT(*) n FROM users').fetchone()['n'];ch=c.execute('SELECT COUNT(*) n FROM chats').fetchone()['n'];c.close();return jsonify(ok=True,version=7,users=u,chats=ch,admin_panel=True,uploader=True,zento_ai=True,providers=['Groq','OpenRouter','Hugging Face'])
+    c=db(); u=c.execute('SELECT COUNT(*) n FROM users').fetchone()['n'];ch=c.execute('SELECT COUNT(*) n FROM chats').fetchone()['n'];c.close();return jsonify(ok=True,version=7,users=u,chats=ch,admin_panel=True,uploader=True,zento_ai=True,providers=['Zyro','Zyro','Zyro'])
 @app.post('/webhook')
 def webhook():
     data=request.get_json(silent=True) or {}
