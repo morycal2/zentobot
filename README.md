@@ -1,28 +1,15 @@
-# Zyro — Railway Bot
+# Zyro
 
-ربات فقط برای Zyro است و منوی اصلی آن سه بخش دارد:
+Zyro فقط دو قابلیت دارد: چت و ساخت تصویر. تبدیل ویس و امکانات قبلی حذف شده‌اند.
 
-- 🎙️ ویس
-- 💬 چت
-- 🖼️ ساخت تصویر
+در گروه یا کانال، پیام را با Zyro یا @Zyro شروع/صدا بزن تا پاسخ بگیرد.
 
-در گروه/کانال، اگر متن شامل `@Zyro` یا `Zyro` باشد، ربات متن بعد از نام خود را پردازش می‌کند.
-
-## Railway Variables
-
-`BOT_TOKEN`
-`ZENTO_API_BASE`
-`ADMIN_ID`
-`GROQ_API_KEY`
-`OPENROUTER_API_KEY`
-`HF_TOKEN`
-
-مدل‌های قابل تنظیم:
-
-`GROQ_STT_MODEL=whisper-large-v3-turbo`
-`OPENROUTER_MODEL=openai/gpt-oss-20b:free`
-`HF_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell`
-
-`AI_TIMEOUT=90`
-
-کلیدها را داخل کد یا GitHub نگذار و فقط در Railway Variables تنظیم کن.
+Railway Variables:
+BOT_TOKEN
+ZENTO_API_BASE
+ADMIN_ID
+OPENROUTER_API_KEY
+OPENROUTER_MODEL=openai/gpt-oss-20b
+HF_TOKEN
+HF_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell
+HF_IMAGE_PROVIDER=auto
