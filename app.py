@@ -21,7 +21,17 @@ def db():
 def init_db():
     c=db()
     c.execute('CREATE TABLE IF NOT EXISTS history(user_id TEXT NOT NULL,role TEXT NOT NULL,content TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP)')
+    c.execute("CREATE TABLE IF NOT EXISTS sessions(user_id TEXT PRIMARY KEY,mode TEXT DEFAULT 'chat')")
     c.commit(); c.close()
+
+def set_mode(uid,mode):
+    c=db(); c.execute("INSERT INTO sessions(user_id,mode) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET mode=excluded.mode",(str(uid),mode)); c.commit(); c.close()
+
+def get_mode(uid):
+    c=db(); r=c.execute("SELECT mode FROM sessions WHERE user_id=?",(str(uid),)).fetchone(); c.close(); return r["mode"] if r else "chat"
+
+def clear_history(uid):
+    c=db(); c.execute("DELETE FROM history WHERE user_id=?",(str(uid),)); c.commit(); c.close()
 
 def api_call(method,payload=None,timeout=15):
     if not BOT_TOKEN:return False,None
@@ -54,7 +64,7 @@ def btn(text,data):return {'text':text,'callback_data':data}
 def menu(rows):return {'inline_keyboard':rows}
 
 def home(cid):
-    send_message(cid,'✨ Zyro\n\nسریع، حرفه‌ای و ساده.\n\n💬 گفتگو با Zyro\n🖼️ ساخت تصویر\n\nانتخاب کن 👇',menu([[btn('💬 چت','chat')],[btn('🖼️ ساخت تصویر','image')]]))
+    send_message(cid,'✨ Zyro\n\nدستیار هوشمند و حرفه‌ای شما.\n\n💬 گفت‌وگو\n🖼️ تولید تصویر\n🧹 پاک‌کردن حافظه گفتگو\nℹ️ راهنما\n\nیکی را انتخاب کنید 👇',menu([[btn('💬 گفت‌وگو','chat'),btn('🖼️ تولید تصویر','image')],[btn('🧹 پاک کردن گفتگو','clear'),btn('ℹ️ راهنما','help')]]))
 
 def get_history(uid):
     c=db(); rows=c.execute('SELECT role,content FROM history WHERE user_id=? ORDER BY rowid DESC LIMIT 10',(str(uid),)).fetchall(); c.close()
@@ -80,14 +90,21 @@ def image(prompt):
     if not HF_TOKEN:return None,'کلید ساخت تصویر در Railway تنظیم نشده است.'
     try:
         from huggingface_hub import InferenceClient
-        client=InferenceClient(provider=HF_IMAGE_PROVIDER or 'auto',api_key=HF_TOKEN,timeout=60)
-        pic=client.text_to_image(prompt,model=HF_IMAGE_MODEL)
-        b=BytesIO(); pic.save(b,format='PNG'); return b.getvalue(),None
-    except Exception as e:
-        t=str(e).lower()
-        if '402' in t or 'payment required' in t:return None,'سرویس ساخت تصویر برای این حساب اعتبار کافی ندارد.'
-        if 'deprecated' in t or 'unsupported' in t:return None,'مدل تصویر دیگر در دسترس نیست؛ HF_IMAGE_MODEL را تغییر بده.'
-        return None,'ساخت تصویر ناموفق بود.'
+        models=[x.strip() for x in os.getenv('HF_IMAGE_MODELS','black-forest-labs/FLUX.1-schnell,Qwen/Qwen-Image').split(',') if x.strip()]
+        provider=os.getenv('HF_IMAGE_PROVIDER','auto').strip() or 'auto'
+        last=None
+        for model in models:
+            try:
+                client=InferenceClient(provider=provider,api_key=HF_TOKEN,timeout=120)
+                pic=client.text_to_image(prompt,model=model)
+                b=BytesIO(); pic.save(b,format='PNG'); return b.getvalue(),None
+            except Exception as e: last=e
+        t=str(last or '').lower()
+        if '402' in t or 'payment required' in t or 'credit' in t:return None,'سرویس تصویر برای این حساب اعتبار کافی ندارد.'
+        if '401' in t or '403' in t:return None,'کلید تصویر دسترسی لازم را ندارد.'
+        return None,'تولید تصویر در حال حاضر در دسترس نیست؛ مدل یا سرویس تصویر را در Railway بررسی کن.'
+    except ImportError:return None,'کتابخانه huggingface_hub نصب نشده است.'
+    except Exception:return None,'تولید تصویر ناموفق بود.'
 
 def is_mention(text):return bool(text and re.search(r'(^|[^a-z0-9_])@?zyro([^a-z0-9_]|$)',str(text),re.I))
 def strip_mention(text):return re.sub(r'\\s+',' ',re.sub(r'(^|[^a-z0-9_])@?zyro(?=$|[^a-z0-9_])',' ',str(text),flags=re.I)).strip(' ,:؛،')
@@ -121,16 +138,23 @@ def handle_callback(data):
     q=parse_callback(data)
     if not q:return
     cid,uid,action,qid=q; answer_callback(qid)
-    if action=='home':home(cid)
-    elif action=='chat':send_message(cid,'💬 پیام خودت را بفرست.',menu([[btn('🏠 بازگشت','home')]]))
-    elif action=='image':send_message(cid,'🖼️ توضیح تصویری که می‌خواهی را بفرست.',menu([[btn('🏠 بازگشت','home')]]))
+    if action=='home': set_mode(uid,'chat'); home(cid)
+    elif action=='chat': set_mode(uid,'chat'); send_message(cid,'💬 حالت گفت‌وگو فعال شد.\nپیامت را بفرست.',menu([[btn('🖼️ تصویر','image'),btn('🧹 پاک کردن','clear')],[btn('🏠 خانه','home')]]))
+    elif action=='image': set_mode(uid,'image'); send_message(cid,'🖼️ حالت تولید تصویر فعال شد.\nتوضیح تصویر را بفرست.',menu([[btn('💬 چت','chat'),btn('🏠 خانه','home')]]))
+    elif action=='clear': clear_history(uid); set_mode(uid,'chat'); send_message(cid,'🧹 حافظه گفت‌وگو پاک شد.',menu([[btn('💬 چت','chat'),btn('🏠 خانه','home')]]))
+    elif action=='help': send_message(cid,'ℹ️ راهنمای Zyro\n\n💬 برای گفتگو پیام بفرست.\n🖼️ برای تصویر، «تولید تصویر» را انتخاب کن و توضیحت را بفرست.\n👥 در گروه یا کانال، Zyro یا @Zyro را صدا بزن.\n🧹 برای شروع یک گفت‌وگوی تازه، حافظه را پاک کن.',menu([[btn('🏠 خانه','home')]]))
 
 def handle_message(data):
     x=parse_message(data)
     if not x or x['chat_id'] is None:return
     cid=x['chat_id']; uid=x['user_id']; text=x['text']; typ=x['chat_type']
-    if text.lower().strip() in ('/start','/ai','ai','zyro'):
-        home(cid);return
+    cmd=text.lower().strip()
+    if cmd in ('/start','/ai','ai','zyro'):
+        set_mode(uid,'chat'); home(cid);return
+    if cmd in ('/clear','/new'):
+        clear_history(uid); set_mode(uid,'chat'); send_message(cid,'🧹 گفت‌وگوی تازه آماده است.',menu([[btn('💬 شروع','chat'),btn('🏠 خانه','home')]])); return
+    if cmd in ('/help','راهنما'):
+        send_message(cid,'ℹ️ راهنمای Zyro\n\n💬 گفت‌وگو: پیام خود را بفرست.\n🖼️ تصویر: از منوی اصلی تولید تصویر را انتخاب کن.\n👥 گروه/کانال: Zyro یا @Zyro را صدا بزن.\n🧹 /clear برای گفت‌وگوی تازه.',menu([[btn('🏠 خانه','home')]])); return
     # In groups/channels Zyro answers when explicitly called by name.
     if typ in ('group','supergroup','channel') and is_mention(text):
         prompt=strip_mention(text)
@@ -138,12 +162,13 @@ def handle_message(data):
         return
     # In private chats, ordinary text is a chat request.
     if typ not in ('group','supergroup','channel') and text and not text.startswith('/'):
-        handle_text(cid,uid,text)
+        if get_mode(uid)=='image': handle_image(cid,text)
+        else: handle_text(cid,uid,text)
 
 @app.get('/')
 def root():return 'Zyro is running.'
 @app.get('/health')
-def health():return jsonify(ok=True,zyro=True,chat_model=OPENROUTER_MODEL,image_model=HF_IMAGE_MODEL)
+def health():return jsonify(ok=True,zyro=True,chat_model=OPENROUTER_MODEL,image_models=os.getenv('HF_IMAGE_MODELS','black-forest-labs/FLUX.1-schnell,Qwen/Qwen-Image').split(','),image_provider=os.getenv('HF_IMAGE_PROVIDER','auto'))
 @app.post('/webhook')
 def webhook():
     data=request.get_json(silent=True) or {}

@@ -1,15 +1,13 @@
-# Zyro
+# Zyro Professional
 
-Zyro فقط دو قابلیت دارد: چت و ساخت تصویر. تبدیل ویس و امکانات قبلی حذف شده‌اند.
+💬 chat with memory
+🖼️ image generation with automatic provider selection and model fallback
+👥 group/channel mention with Zyro or @Zyro
+🧹 clear conversation
+ℹ️ help
+⚡ polished inline UI
 
-در گروه یا کانال، پیام را با Zyro یا @Zyro شروع/صدا بزن تا پاسخ بگیرد.
-
-Railway Variables:
-BOT_TOKEN
-ZENTO_API_BASE
-ADMIN_ID
-OPENROUTER_API_KEY
-OPENROUTER_MODEL=openai/gpt-oss-20b
-HF_TOKEN
-HF_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell
-HF_IMAGE_PROVIDER=auto
+Railway variables: BOT_TOKEN, ZENTO_API_BASE, ADMIN_ID, OPENROUTER_API_KEY, HF_TOKEN.
+Chat model: openai/gpt-oss-20b.
+Image provider: auto.
+Image models: black-forest-labs/FLUX.1-schnell,Qwen/Qwen-Image.
