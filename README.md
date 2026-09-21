@@ -1,30 +1,18 @@
-# Zyro Professional
+# Zyro AI 4.0
 
-نسخه سریع‌تر و حرفه‌ای‌تر Zyro برای Railway.
+نسخه حرفه‌ای و سریع Zyro برای Railway.
 
-## امکانات
-- گفت‌وگوی هوش مصنوعی با OpenRouter
-- تولید تصویر با Hugging Face Inference Providers و چند مدل جایگزین
-- ساخت و ارسال فایل TXT / Markdown / CSV
-- حالت‌های پایدار چت، تصویر و فایل
-- منوی حرفه‌ای و دکمه‌های شیشه‌ای/inline در API تلگرام
-- پاسخ در گروه و کانال با `Zyro` یا `@Zyro`
-- حافظه کوتاه گفتگو و `/clear`
-- Session mode در SQLite
+## قابلیت‌ها
+- گفت‌وگوی هوشمند با OpenRouter
+- تولید تصویر با Hugging Face Inference Providers و چند مدل fallback
+- ساخت TXT / MD / CSV / JSON / PDF / DOCX / XLSX
+- ابزارهای خلاصه‌سازی، ترجمه، کدنویسی و گزارش
+- منوی حرفه‌ای با متن کامل روی دکمه‌ها
+- کار در گروه با Zyro یا @Zyro
+- webhook سریع: درخواست بلافاصله 200 می‌گیرد و پردازش AI در worker انجام می‌شود
+- SQLite + WAL برای دسترسی سریع‌تر به حافظه
 
-## متغیرهای Railway
+## Railway Variables
 همه متغیرهای `.env.example` را تنظیم کن.
 
-### تصویر
-`HF_TOKEN` باید توکن Hugging Face با دسترسی Inference داشته باشد.
-`HF_IMAGE_PROVIDER=auto` را نگه دار تا Hugging Face بتواند provider مناسب را انتخاب و در صورت نیاز failover کند.
-`HF_IMAGE_MODELS` به‌صورت پیش‌فرض سه مدل را امتحان می‌کند.
-
-اگر تصویر هنوز خطا داد، endpoint `/health` را باز کن تا مدل و provider تنظیم‌شده را ببینی.
-
-## اجرای Railway
-Procfile:
-`web: gunicorn -w 1 -b 0.0.0.0:$PORT app:app`
-
-## فایل
-از منوی «📎 ساخت فایل» استفاده کن. اگر در متن به CSV/Excel اشاره شود فایل CSV ساخته می‌شود؛ برای Markdown فایل MD و در حالت عادی TXT ساخته می‌شود.
+برای تصویر، `HF_TOKEN` باید مجوز Inference Providers داشته باشد. `HF_IMAGE_PROVIDER=auto` را نگه دار تا Hugging Face سریع‌ترین Provider در دسترس را انتخاب و در صورت عدم دسترسی failover کند.
